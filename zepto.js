@@ -239,15 +239,12 @@
       return dom
     }
 
-    // `$.zepto.Z` swaps out the prototype of the given `dom` array
-    // of nodes with `$.fn` and thus supplying all the Zepto functions
-    // to the array. This method can be overridden in plugins.
+    //返回值为构造函数形式创建了Z对象
     zepto.Z = function(dom, selector) {
       return new Z(dom, selector)
     }
 
-    // `$.zepto.isZ` should return `true` if the given object is a Zepto
-    // collection. This method can be overridden in plugins.
+    //判断是否为Z对象
     zepto.isZ = function(object) {
       return object instanceof zepto.Z
     }
@@ -271,14 +268,15 @@
           // 上下文不存在的话，调用zepto.qsa()
         else dom = zepto.qsa(document, selector)
       }
-      // If a function is given, call it when the DOM is ready
+      // $(function(){}) => 很常见的$自执行函数，selector为一个函数
+      // 执行$(document).ready(function() {})
       else if (isFunction(selector)) return $(document).ready(selector) //第三个判断
-        // If a Zepto collection is given, just return it
+        // 如果是Z对象，直接返回当前选择器
       else if (zepto.isZ(selector)) return selector  //第四个判断
       else {   //第五个判断
-        // normalize array if an array of nodes is given
+        // 如果选择器为数组的话，过滤掉null和undefined值
         if (isArray(selector)) dom = compact(selector)
-          // Wrap DOM nodes.
+          // ？？？如果选择器为对象的话，将对象变为数组形式，暂时没想到合适的例子
         else if (isObject(selector))
           dom = [selector], selector = null
           // If it's a html fragment, create nodes from it
