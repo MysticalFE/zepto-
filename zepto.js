@@ -279,16 +279,15 @@
           // ？？？如果选择器为对象的话，将对象变为数组形式，暂时没想到合适的例子
         else if (isObject(selector))
           dom = [selector], selector = null
-          // If it's a html fragment, create nodes from it
+          // ？？？这个判断是什么鬼，在这的作用是啥，懵逼！！！
         else if (fragmentRE.test(selector))
           dom = zepto.fragment(selector.trim(), RegExp.$1, context), selector = null
-          // If there's a context, create a collection on that context first, and select
-          // nodes from there
+          //如果传入context,当前上下文$(selector, context)
         else if (context !== undefined) return $(context).find(selector)
-          // And last but no least, if it's a CSS selector, use it to select nodes.
+          //如果没有传入该参数，则为undefined,默认为document
         else dom = zepto.qsa(document, selector)
       }
-      // create a new Zepto collection from the nodes found
+      // 得到dom, selector,调用函数Z
       return zepto.Z(dom, selector)
     }
 
@@ -552,18 +551,30 @@
 
       // Because a collection acts like an array
       // copy over these useful array functions.
-      forEach: emptyArray.forEach,
-      reduce: emptyArray.reduce,
-      push: emptyArray.push,
-      sort: emptyArray.sort,
-      splice: emptyArray.splice,
-      indexOf: emptyArray.indexOf,
+      forEach: emptyArray.forEach,  //数组的forEach方法
+      //arr.reduce((accumulator, currentValue, currentIndex, arr) => ... , initialValue)
+      /**
+        accumulator 累加回调的返回值, 上一次调用回调时返回的累积值
+        currentValue 数组中当前正在处理的元素
+        currentIndex  数组中当前正在处理的元素的索引
+        array 调用reduce的数组
+        initialValue  第一个调用回调函数第一个参数的值
+       */
+      reduce: emptyArray.reduce,   //数组的reduce方法
+      push: emptyArray.push,  //数组的push方法
+      sort: emptyArray.sort,  //数组的sort方法
+      splice: emptyArray.splice,  //数组的splice方法
+      indexOf: emptyArray.indexOf,  //数组的indexOf方法
+      //合并zepto的数组集合，console.log(ele.concat($('.obj'))) 返回的是普通dom数组集合
       concat: function() {
         var i, value, args = []
+        //arguments => $('.obj')
         for (i = 0; i < arguments.length; i++) {
           value = arguments[i]
+          //判断value 是否为zepto对象
           args[i] = zepto.isZ(value) ? value.toArray() : value
         }
+        //args => $('.obj')中的dom节点[0...]即我们说的集合伪数组
         return concat.apply(zepto.isZ(this) ? this.toArray() : this, args)
       },
 
@@ -587,12 +598,20 @@
         }, false)
         return this
       },
+      /**
+       * 从当前对象集合中获取所有元素或单个
+       * @param   idx  索引值
+       * idx 为空，普通数组的方式返回所有的元素  inx可以为负值
+       * 与eq()不同，get()只是返回dom节点， eq()返回的是zepto对象集合
+       */
       get: function(idx) {
         return idx === undefined ? slice.call(this) : this[idx >= 0 ? idx : idx + this.length]
       },
+      //将集合返回的类数组通过get()方法变为真正的数组
       toArray: function() {
         return this.get()
       },
+      //返回对象集合中的length，元素个数
       size: function() {
         return this.length
       },
@@ -602,6 +621,8 @@
             this.parentNode.removeChild(this)
         })
       },
+      //emptyArray.every  遍历数组的每个元素对于回调函数的条件是否全都通过
+      //each循环  回调函数返回flase, 结束遍历
       each: function(callback) {
         emptyArray.every.call(this, function(el, idx) {
           return callback.call(el, idx, el) !== false
