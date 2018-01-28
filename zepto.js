@@ -578,17 +578,18 @@
         return concat.apply(zepto.isZ(this) ? this.toArray() : this, args)
       },
 
-      // `map` and `slice` in the jQuery API work differently
-      // from their array counterparts
+      //$(ele).map((index, item) => ...)
       map: function(fn) {
         return $($.map(this, function(el, i) {
+          //call 的第一个参数为 el ，因此可以在 map 的回调中通过 this 来拿到每个元素
           return fn.call(el, i, el)
         }))
       },
+      //截取数组，对数组进行浅拷贝，再返回zepto对象
       slice: function() {
         return $(slice.apply(this, arguments))
       },
-
+      //监听dom加载完毕后
       ready: function(callback) {
         // need to check if document.body exists for IE as that browser reports
         // document ready when it hasn't yet created the body element
@@ -615,6 +616,7 @@
       size: function() {
         return this.length
       },
+      //从其父元素移除某个dom元素
       remove: function() {
         return this.each(function() {
           if (this.parentNode != null)
@@ -635,6 +637,9 @@
           return zepto.matches(element, selector)
         }))
       },
+      //添加元素到当前匹配的元素集合中。如果给定content参数，将只在content元素中进行查找，否则在整个document中查找。
+      //uniq 数组去重  concat 合并zepto集合的类数组
+      //$(ele).add(anotherEle)
       add: function(selector, context) {
         return $(uniq(this.concat($(selector, context))))
       },
