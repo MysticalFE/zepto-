@@ -73,17 +73,26 @@
       function(object) {
         return object instanceof Array
       }
+    //判断一个元素是否匹配给定的选择器
     zepto.matches = function(element, selector) {
       if (!selector || !element || element.nodeType !== 1) return false
+      //判断各个浏览器的matchesSelector方法
       var matchesSelector = element.matches || element.webkitMatchesSelector ||
         element.mozMatchesSelector || element.oMatchesSelector ||
         element.matchesSelector
       if (matchesSelector) return matchesSelector.call(element, selector)
-        // fall back to performing a selector:
-      var match, parent = element.parentNode,
-        temp = !parent
-      if (temp)(parent = tempParent).appendChild(element)
+      //如果浏览器不支持MatchesSelector方法，则将节点放入一个临时div节点，
+      //再通过selector来查找这个div下的节点集，再判断给定的element是否在节点集中，如果在，则返回一个非零(即非false)
+      var match, parent = element.parentNode, temp = parent
+      if (!temp) {
+        //全局变量  tempParent = document.createElement('div'),
+        ////当element没有父节点，将其插入到一个临时的div里面
+        (parent = tempParent).appendChild(element)
+      }
+      //匹配元素选择器，match获取element在其节点集的索引值，不存在索引为-1,再按二进位取反~-1=0
+      //怎么不通过判断zepto.qsa(parent, selector).indexOf(element) > -1 返回Boolean
       match = ~zepto.qsa(parent, selector).indexOf(element)
+      //将临时创建的父级节点移除掉
       temp && tempParent.removeChild(element)
       return match
     }
@@ -186,11 +195,16 @@
       }
       return elementDisplay[nodeName]
     }
-
+    //返回匹配元素集合的直接子元素 $(parentLele).children([selector])
     function children(element) {
+      //判断浏览器中匹配元素element中是否有children属性
+      //如果有直接用children属性，没有的话，用原生childNodes
       return 'children' in element ?
+        //children 返回的节点类型是元素节点
         slice.call(element.children) :
         $.map(element.childNodes, function(node) {
+          //childNodes 返回的节点类型可以是元素类型，文本类型，注释类型
+          //所以这里需要判断下节点类型（以保证和children返回类型一致）
           if (node.nodeType == 1) return node
         })
     }
@@ -378,7 +392,7 @@
           element.querySelectorAll(selector) //
         )
     }
-
+    //过滤集合中的指定选择器，调用的是filter方法(注：这里的filter不是数组原生方法)
     function filtered(nodes, selector) {
       return selector == null ? $(nodes) : $(nodes).filter(selector)
     }
@@ -390,13 +404,13 @@
         if (node) return parent !== node && parent.contains(node)
       } :
       function(parent, node) {
-        // while (node && (node = node.parentNode)) { //为什么要用循环判断
-        //   if (node === parent) return true
-        // }
-        //和这种方式有什么不同？
-        if (node && parent === node.parentNode) {
-          return true
+        while (node && (node = node.parentNode)) { //为什么要用循环判断
+          if (node === parent) return true
         }
+        //和这种方式有什么不同？
+        // if (node && parent === node.parentNode) {
+        //   return true
+        // }
         return false
       }
 
@@ -548,9 +562,6 @@
     $.fn = {
       constructor: zepto.Z,
       length: 0,
-
-      // Because a collection acts like an array
-      // copy over these useful array functions.
       forEach: emptyArray.forEach,  //数组的forEach方法
       //arr.reduce((accumulator, currentValue, currentIndex, arr) => ... , initialValue)
       /**
@@ -631,9 +642,12 @@
         })
         return this
       },
+      //将集合中符合条件的元素过滤出来
       filter: function(selector) {
+        //如果selector为函数，先筛选出需要排除的元素this.not(selector)，再对排除出来的元素进行取反this.not(this.not(selector))
         if (isFunction(selector)) return this.not(this.not(selector))
         return $(filter.call(this, function(element) {
+          //返回filter回调函数返回值为true的值
           return zepto.matches(element, selector)
         }))
       },
@@ -643,31 +657,46 @@
       add: function(selector, context) {
         return $(uniq(this.concat($(selector, context))))
       },
+      //判断集合的第一个元素是否匹配selector
       is: function(selector) {
         return this.length > 0 && zepto.matches(this[0], selector)
       },
+      //将集合中不符合条件的元素过滤出来,参数可以为：css选择器, function, dom, nodeList
       not: function(selector) {
+        //被过滤的数组集合
         var nodes = []
+        //selector为函数时，为防止有些浏览器(早期safari下 typeof nodeList也会判断为function)会对typeof兼容问题，这里又加了个selector是否有call方法
         if (isFunction(selector) && selector.call !== undefined)
           this.each(function(idx) {
+            //selector.call(this, idx)值为false时，将过滤元素放入nodes数组中
             if (!selector.call(this, idx)) nodes.push(this)
           })
         else {
+          //如果selector为string,则筛选出集合中符合条件的元素
           var excludes = typeof selector == 'string' ? this.filter(selector) :
+          //如果selector为nodeList 类数组形式，则把selector转为数组形式slice.call(selector)
+          //???? isFunction(selector.item)这里这样写的原因暂不清楚？？？
+          //如果selector为css选择器的话，则直接获取$(selector)
             (likeArray(selector) && isFunction(selector.item)) ? slice.call(selector) : $(selector)
           this.forEach(function(el) {
+            //遍历集合，筛选出excludes中不存在的元素
             if (excludes.indexOf(el) < 0) nodes.push(el)
           })
         }
+        //以zepto对象形式返回筛选过滤后的元素
         return $(nodes)
       },
+      //判断当前对象集合是否有符合选择器的元素，有的话就返回不包含有选择器元素的对象集合
       has: function(selector) {
         return this.filter(function() {
+          //如果selector为对象集合，执行$.contains(this, selector),返回true的话，当前filter回调也返回true
           return isObject(selector) ?
             $.contains(this, selector) :
+            //如果selector为string 节点 或 css选择器的话，返回该selector集合length, length>0为true, length==0为false
             $(this).find(selector).size()
         })
       },
+      //获取集合中指定索引的元素
       eq: function(idx) {
         return idx === -1 ? this.slice(idx) : this.slice(idx, +idx + 1)
       },
@@ -679,17 +708,27 @@
         var el = this[this.length - 1]
         return el && !isObject(el) ? el : $(el)
       },
+      //在当前集合中查找符合selector的后代元素，参数为 集合，选择器，节点
       find: function(selector) {
         var result, $this = this
+        //如果参数为空，返回空对象
         if (!selector) result = $()
+          //如果selector为zepto对象集合
         else if (typeof selector == 'object')
           result = $(selector).filter(function() {
             var node = this
+            //emptyArray.some(callback)测试数组中的每个元素是否符合条件，如果全部符合则返回true, 如果有一个不符合则返回false
+            // callback参数为ele,index, array ele为循环的每个元素，index为索引，array为原数组
             return emptyArray.some.call($this, function(parent) {
+              //此处parent为数组循环出来的每个元素，node为selector
+              //如果parent包含有selector,返回true,则some回调也返回true, 则当前filter回调返回true
               return $.contains(parent, node)
             })
           })
+        //如果selector为css选择器
+        //如果当前集合length==1即$(parent).find('.onlyOneSelector')
         else if (this.length == 1) result = $(zepto.qsa(this[0], selector))
+          //如果当前集合length>1即$(parent).find('.moreSelector'),调用map，直接返回zepto对象数组形式
         else result = this.map(function() {
           return zepto.qsa(this, selector)
         })
