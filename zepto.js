@@ -173,7 +173,6 @@
         return array.indexOf(item) == idx
       })
     }
-
     function classRE(name) {
       return name in classCache ?
         classCache[name] : (classCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'))
@@ -698,12 +697,18 @@
       },
       //获取集合中指定索引的元素
       eq: function(idx) {
+        //如果索引为-1的话，查找并截取集合中最后一个数组元素
+        //否则，查找截取指定索引元素
+        //this.slice(idx, +idx + 1)  +idx + 1 若idx为'2'number string +idx可将idx隐式转换为number
         return idx === -1 ? this.slice(idx) : this.slice(idx, +idx + 1)
       },
+      //获取集合的第一个元素
       first: function() {
+        //el = this.eq(0) 或者 el = this.slice(0,1)
         var el = this[0]
         return el && !isObject(el) ? el : $(el)
       },
+      //获取集合的最后一个元素
       last: function() {
         var el = this[this.length - 1]
         return el && !isObject(el) ? el : $(el)
@@ -734,9 +739,11 @@
         })
         return result
       },
+      //查找离当前集合元素最近的满足条件的父级元素,参数为对象集合，节点，选择器
       closest: function(selector, context) {
         var nodes = [],
-          collection = typeof selector == 'object' && $(selector)
+          //判断selector是否为zepto对象集合, 再统一转化为zepto对象
+          collection = typeof selector == "object" && $(selector)
         this.each(function(_, node) {
           while (node && !(collection ? collection.indexOf(node) >= 0 : zepto.matches(node, selector)))
             node = node !== context && !isDocument(node) && node.parentNode
@@ -744,28 +751,41 @@
         })
         return $(nodes)
       },
+      //查找当前集合元素所有的祖先元素(如果只想获取第一个符合选择器的元素，可以使用closest())
+      //参数selector为空的话，返回所有的祖先元素；不为空时，则返回当前指定的选择器selector
       parents: function(selector) {
         var ancestors = [],
-          nodes = this
+          nodes = this  //初始值为当前集合，每次map循环完后，nodes值为自身的最近父级元素
+          //直到所有的父级元素找到后，跳出循环
         while (nodes.length > 0)
           nodes = $.map(nodes, function(node) {
+            //将node父级元素赋值给node自身，node不是decument类型并且ancestors中没有node
             if ((node = node.parentNode) && !isDocument(node) && ancestors.indexOf(node) < 0) {
-              ancestors.push(node)
+              ancestors.push(node) //将node保存在ancestors数组内
               return node
             }
           })
+        //filtered方法过滤ancestors，找到符合指定选择器的祖先元素
         return filtered(ancestors, selector)
       },
+      //获取对象集合中元素的直接父级元素（参数可为空）
       parent: function(selector) {
+        //this.pluck('parentNode') 得到对象集合中每个元素的parentNode节点
+        //uniq(this.pluck('parentNode')  再对其进行去重操作
+        //最后过滤出符合条件的元素
         return filtered(uniq(this.pluck('parentNode')), selector)
       },
+      //返回对象集合中所有的子元素，通过调用内部children方法
       children: function(selector) {
         return filtered(this.map(function() {
           return children(this)
         }), selector)
       },
+      //返回对象集合的所有子节点元素(包括文本节点，注释节点，元素节点)
+      //children()方法是对childNodes进行了判断，只筛选出所有子节点元素的元素节点
       contents: function() {
         return this.map(function() {
+          //contentDocument是iframe内部属性
           return this.contentDocument || slice.call(this.childNodes)
         })
       },
@@ -781,7 +801,7 @@
           this.innerHTML = ''
         })
       },
-      // `pluck` is borrowed from Prototype.js
+      //对当前集合遍历，返回元素指定属性的数组
       pluck: function(property) {
         return $.map(this, function(el) {
           return el[property]
