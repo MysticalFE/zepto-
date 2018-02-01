@@ -789,8 +789,10 @@
           return this.contentDocument || slice.call(this.childNodes)
         })
       },
+      //查找对象集合元素的兄弟节点
       siblings: function(selector) {
         return filtered(this.map(function(i, el) {
+          //对 对象集合元素父级节点的子节点筛选出子元素不为当前集合元素的其他子元素
           return filter.call(children(el.parentNode), function(child) {
             return child !== el
           })
@@ -869,9 +871,14 @@
           (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
         })
       },
+      //获取对象集合中元素的前一个兄弟节点
+      //previousElementSibling 与 previousSibling的区别
       prev: function(selector) {
+        //previousElementSibling 获取上一个兄弟节点元素
+      //previousSibling  获取上一个兄弟节点（元素节点，文本节点，注释节点）
         return $(this.pluck('previousElementSibling')).filter(selector || '*')
       },
+      //获取对象集合中元素的下一个兄弟节点
       next: function(selector) {
         return $(this.pluck('nextElementSibling')).filter(selector || '*')
       },
@@ -1012,7 +1019,10 @@
           this.style.cssText += ';' + css
         })
       },
+      //返回指定元素在当前集合中的位置即索引值
       index: function(element) {
+        //如果给定参数元素 执行this.indexOf($(element)[0])
+        //如果参数为空，执行this.parent().children().indexOf(this[0]) 当前集合在其兄弟元素中的位置
         return element ? this.indexOf($(element)[0]) : this.parent().children().indexOf(this[0])
       },
       hasClass: function(name) {
