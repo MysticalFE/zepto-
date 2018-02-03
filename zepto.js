@@ -15,6 +15,8 @@
       document = window.document,
       elementDisplay = {},
       classCache = {},
+      //可能不需要添加单位px的属性
+      //???这里有个问题'line-height' 有时候是需要添加px的，这里排除掉应该是不对的
       cssNumber = {
         'column-count': 1,
         'columns': 1,
@@ -33,6 +35,13 @@
       // special attributes that should be get/set via method calls
       methodAttributes = ['val', 'css', 'html', 'text', 'data', 'width', 'height', 'offset'],
 
+      //dom操作的四种方式
+      /**
+       * after => 在集合元素(外部)之后插入content
+       * before =>在集合元素(外部)之前插入content
+       * prepend =>在集合元素(内部)初始位置插入content
+       * append =>在集合元素(内部)最后插入content
+       */
       adjacencyOperators = ['after', 'prepend', 'before', 'append'],
       table = document.createElement('table'),
       tableRow = document.createElement('tr'),
@@ -173,15 +182,18 @@
         return array.indexOf(item) == idx
       })
     }
+    //匹配元素的class名 classCache为临时保存class的对象
     function classRE(name) {
       return name in classCache ?
         classCache[name] : (classCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'))
     }
 
+    //判断可能需要添加px的属性，但line-height也是可以添加px的，排除掉应该是不对的
     function maybeAddPx(name, value) {
       return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
     }
 
+    //判断节点元素默认的display值(display属性值有很多种)
     function defaultDisplay(nodeName) {
       var element, display
       if (!elementDisplay[nodeName]) {
@@ -189,10 +201,12 @@
         document.body.appendChild(element)
         display = getComputedStyle(element, '').getPropertyValue("display")
         element.parentNode.removeChild(element)
+        //如果display默认值为none，赋值为block
+        //纳尼还有默认值为none的节点么？有待查证
         display == "none" && (display = "block")
         elementDisplay[nodeName] = display
       }
-      return elementDisplay[nodeName]
+      return elementDisplay[nodeName] //将节点display默认值保存起来
     }
     //返回匹配元素集合的直接子元素 $(parentLele).children([selector])
     function children(element) {
@@ -218,11 +232,7 @@
       this.selector = selector || ''
     }
 
-    // `$.zepto.fragment` takes a html string and an optional tag name
-    // to generate DOM nodes from the given html string.
-    // The generated DOM nodes are returned as an array.
-    // This function can be overridden in plugins for example to make
-    // it compatible with browsers that don't support the DOM fully.
+
     zepto.fragment = function(html, name, properties) {
       var dom, nodes, container
 
@@ -417,16 +427,18 @@
       return isFunction(arg) ? arg.call(context, idx, payload) : arg
     }
 
+    //给节点元素添加属性
     function setAttribute(node, name, value) {
       value == null ? node.removeAttribute(name) : node.setAttribute(name, value)
     }
 
-    // access className property while respecting SVGAnimatedString
+    // 设定元素给定值value(对svg做了判断)
     function className(node, value) {
       var klass = node.className || '',
         svg = klass && klass.baseVal !== undefined
-
+        //如果不传入value，直接返回className
       if (value === undefined) return svg ? klass.baseVal : klass
+        //否则将元素className设置为value
       svg ? (klass.baseVal = value) : (node.className = value)
     }
 
@@ -626,7 +638,7 @@
       size: function() {
         return this.length
       },
-      //从其父元素移除某个dom元素
+      //从其父元素移除当前元素
       remove: function() {
         return this.each(function() {
           if (this.parentNode != null)
@@ -798,6 +810,7 @@
           })
         }), selector)
       },
+      //将当前对象集合各元素的内容清空
       empty: function() {
         return this.each(function() {
           this.innerHTML = ''
@@ -816,52 +829,68 @@
             this.style.display = defaultDisplay(this.nodeName)
         })
       },
+      //把当前对象集合替换为指定的内容
       replaceWith: function(newContent) {
+        //this.before(newContent)  先将newContent插入到当前元素前面
+        //remove()  再把当前元素删除掉以达到替换的效果
         return this.before(newContent).remove()
       },
+      //遍历当前对象集合,让每个元素都被包裹指定的结构structure
       wrap: function(structure) {
+        //判断structure是否为函数
         var func = isFunction(structure)
+        //如果当前对象集合第一个元素存在并且structure不为函数
         if (this[0] && !func)
-          var dom = $(structure).get(0),
-            clone = dom.parentNode || this.length > 1
-
+          var dom = $(structure).get(0),//将structure转化为node节点
+            clone = dom.parentNode || this.length > 1  //判断深浅克隆
+        //遍历当前对象集合
         return this.each(function(index) {
+          //cloneNode true => 深度克隆，包括该节点本身及其后代  false => 只克隆该节点本身
           $(this).wrapAll(
             func ? structure.call(this, index) :
-            clone ? dom.cloneNode(true) : dom
+            clone ? dom.cloneNode(true) : dom  //这里对dom进行cloneNode操作，是避免因dom原本有parentNode,直接对其操作会破坏原有dom结构
           )
         })
       },
+      //将当前所有对象集合元素插入structure指定的dom结构中最深处
+      //如果structure指定的dom结构中有子节点，则将当前元素发插入子节点中
       wrapAll: function(structure) {
         if (this[0]) {
           $(this[0]).before(structure = $(structure))
           var children
-            // drill down to the inmost element
+            //如果structure有子节点的话，将子节点赋值给structure,直到structure最深一层
           while ((children = structure.children()).length) structure = children.first()
+            //将当前对象集合元素放入structure中
           $(structure).append(this)
         }
         return this
       },
+      //以当前对象集合中的每个元素为父级
       wrapInner: function(structure) {
         var func = isFunction(structure)
         return this.each(function(index) {
           var self = $(this),
             contents = self.contents(),
             dom = func ? structure.call(this, index) : structure
+            //如果当前元素内没有后代内容，直接将structure append到当前元素
+            //如果当前元素内后代内容，调用wrapAll方法
           contents.length ? contents.wrapAll(dom) : self.append(dom)
         })
       },
+      //将当前对象集合元素的父级删除掉  调用replaceWith
       unwrap: function() {
         this.parent().each(function() {
           $(this).replaceWith($(this).children())
         })
         return this
       },
+      //深度克隆当前元素 cloneNode(true)
       clone: function() {
         return this.map(function() {
           return this.cloneNode(true)
         })
       },
+      //将当前元素隐藏
       hide: function() {
         return this.css("display", "none")
       },
@@ -1158,8 +1187,8 @@
         traverseNode(node.childNodes[i], fun)
     }
 
-    // Generate the `after`, `prepend`, `before`, `append`,
-    // `insertAfter`, `insertBefore`, `appendTo`, and `prependTo` methods.
+    //adjacencyOperators = ['after', 'prepend', 'before', 'append'],
+    //这块代码待后续看
     adjacencyOperators.forEach(function(operator, operatorIndex) {
       var inside = operatorIndex % 2 //=> prepend, append
 
