@@ -439,7 +439,7 @@
         //如果不传入value，直接返回className
       if (value === undefined) return svg ? klass.baseVal : klass
         //否则将元素className设置为value
-      svg ? (klass.baseVal = value) : (node.className = value)
+      return svg ? (klass.baseVal = value) : (node.className = value)
     }
 
     // "true"  => true
@@ -734,7 +734,7 @@
         else if (typeof selector == 'object')
           result = $(selector).filter(function() {
             var node = this
-            //emptyArray.some(callback)测试数组中的每个元素是否符合条件，如果全部符合则返回true, 如果有一个不符合则返回false
+            //emptyArray.some(callback)测试数组中的某些元素是否符合条件，如果有一个符合则返回true, 如果全部不符合条件则返回false
             // callback参数为ele,index, array ele为循环的每个元素，index为索引，array为原数组
             return emptyArray.some.call($this, function(parent) {
               //此处parent为数组循环出来的每个元素，node为selector
@@ -822,9 +822,12 @@
           return el[property]
         })
       },
+      //显示dom元素
       show: function() {
         return this.each(function() {
+            //如果display值为none，赋值为空
           this.style.display == "none" && (this.style.display = '')
+          //如果display不写在内联样式的话，即外联和签入样式的话，给display设置成其相应的display默认值如table...
           if (getComputedStyle(this, '').getPropertyValue("display") == "none")
             this.style.display = defaultDisplay(this.nodeName)
         })
@@ -894,9 +897,13 @@
       hide: function() {
         return this.css("display", "none")
       },
+      //控制元素显示隐藏，
+      //参数setting可以为显示隐藏的条件
       toggle: function(setting) {
         return this.each(function() {
           var el = $(this);
+          //如果setting为空的话，判断当前元素是否是隐藏的，再进行下面的判断
+          //否则判断setting条件是否成立，再进行下面的判断
           (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
         })
       },
@@ -1078,36 +1085,58 @@
         //如果参数为空，执行this.parent().children().indexOf(this[0]) 当前集合在其兄弟元素中的位置
         return element ? this.indexOf($(element)[0]) : this.parent().children().indexOf(this[0])
       },
+      //判断元素是否有指定的class，返回值为Boolean
       hasClass: function(name) {
         if (!name) return false
+        //some(callback, thisArg)
+        //callback中的this指向的对象是thisArg
         return emptyArray.some.call(this, function(el) {
           return this.test(className(el))
         }, classRE(name))
       },
+      //添加class
+      //addClass(class [class1 class2])
+      //addClass(callback)
+      //function funcArg(context, arg, idx, payload) {
+      //  return isFunction(arg) ? arg.call(context, idx, payload) : arg
+      //}
       addClass: function(name) {
         if (!name) return this
         return this.each(function(idx) {
           if (!('className' in this)) return
           classList = []
-          var cls = className(this),
-            newName = funcArg(this, name, idx, cls)
+          var cls = className(this),//cls变量为保存当前对象集合元素原有的class
+            newName = funcArg(this, name, idx, cls) //funcArg用于判断并处理参数是否为函数
+            //newName.split(/\s+/g) 将新添加class字符串转换成数组形式
           newName.split(/\s+/g).forEach(function(klass) {
+              //判断当前元素是否有该class，没有就将该class push到一个临时数组中
             if (!$(this).hasClass(klass)) classList.push(klass)
           }, this)
+          //临时数组不为空，执行下面className返回值
+          //如果cls存在  则cls + (cls ? " " : "") + classList.join(" ") => “class class1”
+          //再调用className方法将上面的字符串赋值给dom节点className
           classList.length && className(this, cls + (cls ? " " : "") + classList.join(" "))
         })
       },
+      //移除class（参数同addClass）
       removeClass: function(name) {
         return this.each(function(idx) {
           if (!('className' in this)) return
+          //如果name为空，则移除掉该元素所有的class
           if (name === undefined) return className(this, '')
           classList = className(this)
+          //funcArg(this, name, idx, classList).split(/\s+/g) 返回处理后的移除class
           funcArg(this, name, idx, classList).split(/\s+/g).forEach(function(klass) {
+              //如果classList能匹配到kclass，用空格代替该class
+              //再赋值给classList
             classList = classList.replace(classRE(klass), " ")
           })
+          //最后，用 trim 将 classList 的头尾空格去掉，调用 className 方法，重新给当前元素的 className 赋值。
           className(this, classList.trim())
         })
       },
+      //hasClass 和 removeClass的结合
+      //类似于toggle，不做过多分析
       toggleClass: function(name, when) {
         if (!name) return this
         return this.each(function(idx) {
