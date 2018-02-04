@@ -1009,33 +1009,56 @@
           height: Math.round(obj.height)
         }
       },
+      //读取或设置DOM元素的css属性
+      //css(prop)
+      //css([prop1, prop2, ...])[prop1]
+      //css(prop, value)
+      //css({ prop: value, prop2: value2, ... })
       css: function(property, value) {
+          //读取css样式
         if (arguments.length < 2) {
-          var element = this[0]
+          var element = this[0] //node节点
+          //第一种形式
           if (typeof property == 'string') {
+              //节点不存在，return掉
             if (!element) return
+            //存在的话，有两种情况
+            //如果节点style中原本就有该属性值，则直接取该属性值
+            //如果节点style没有该属性值的话，则使用getComputedStyle来计算该属性，再用getPropertyValue获取该属性值
+            //安利一下getComputedStyle  与  style  的不同
+            //getComputedStyle 只能获取样式  而style则既可以添加也可以获取
+            //但是style获取的样式只是内联样式，而getComputedStyle没有限制； 另外getComputedStyle的第二个可选参数为伪类元素，可以获取伪类样式
             return element.style[camelize(property)] || getComputedStyle(element, '').getPropertyValue(property)
+            //第二种形式参数为数组形式时
           } else if (isArray(property)) {
             if (!element) return
             var props = {}
             var computedStyle = getComputedStyle(element, '')
+            //对数组进行循环
             $.each(property, function(_, prop) {
               props[prop] = (element.style[camelize(prop)] || computedStyle.getPropertyValue(prop))
             })
+             //props是多个属性以键值对形式的对象
             return props
           }
         }
-
+        //设置css样式
         var css = ''
+        //第三种形式，设置单个属性值
         if (type(property) == 'string') {
+            //value属性值为空时，将当前设置的属性移除掉removeProperty
           if (!value && value !== 0)
             this.each(function() {
               this.style.removeProperty(dasherize(property))
             })
           else
+          //给可能需要添加px的属性加上单位
             css = dasherize(property) + ":" + maybeAddPx(property, value)
+        //第四种形式
         } else {
-          for (key in property)
+            //
+          for (key in property)//遍历传入的对象
+          //value属性值为空时，将当前设置的属性移除掉removeProperty
             if (!property[key] && property[key] !== 0)
               this.each(function() {
                 this.style.removeProperty(dasherize(key))
@@ -1043,8 +1066,9 @@
             else
               css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
         }
-
+         //遍历当前对象集合中的元素，用cssText批量修改或添加样式
         return this.each(function() {
+            //cssText（假如不为空）在IE中最后一个分号会被删掉，在前面加';',可以解决这个问题
           this.style.cssText += ';' + css
         })
       },
