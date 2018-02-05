@@ -30,8 +30,7 @@
       singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
       tagExpanderRE = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig,
       rootNodeRE = /^(?:body|html)$/i,
-      capitalRE = /([A-Z])/g,
-
+      capitalRE = /([A-Z])/g, //匹配大写字母
       // special attributes that should be get/set via method calls
       methodAttributes = ['val', 'css', 'html', 'text', 'data', 'width', 'height', 'offset'],
 
@@ -427,11 +426,11 @@
       return isFunction(arg) ? arg.call(context, idx, payload) : arg
     }
 
-    //给节点元素添加属性
+    //给节点元素添加或删除属性
+    //value为空，则为删除属性
     function setAttribute(node, name, value) {
       value == null ? node.removeAttribute(name) : node.setAttribute(name, value)
     }
-
     // 设定元素给定值value(对svg做了判断)
     function className(node, value) {
       var klass = node.className || '',
@@ -450,13 +449,27 @@
     // "08"    => "08"
     // JSON    => parse if valid
     // String  => self
+    //判断数据类型并返回相应类型转换后的value
     function deserializeValue(value) {
+      //使用try catch在数据类型转换失败后依然可以有返回值
       try {
         return value ?
+        //value为true的话，返回true
           value == "true" ||
+          //value为false的话，返回false
           (value == "false" ? false :
+            //value为null的话，返回null
             value == "null" ? null :
+            //+value 数字字符串转换为数字number类型，有以下几种可能
+            /**
+             * +'88' => 88
+             * +'08' => 8
+             * +'aaa' => NaN
+             */
+            //+value + "" 转成Number类型后，再转成字符串类型，和原值比较，true就返回Number类型
+            //false就执行下面的三元式
             +value + "" == value ? +value :
+            // /^[\[\{]/ 校验以[ 或 { 开头的数据 将其判断可能为数组或对象格式，并将其解析
             /^[\[\{]/.test(value) ? $.parseJSON(value) :
             value) : value
       } catch (e) {
@@ -918,33 +931,54 @@
       next: function(selector) {
         return $(this.pluck('nextElementSibling')).filter(selector || '*')
       },
+      //设置或读取元素html
       html: function(html) {
+        //判断arguments即参数是否为空
         return 0 in arguments ?
+          //设置
           this.each(function(idx) {
-            var originHtml = this.innerHTML
+            var originHtml = this.innerHTML //元素的原有html
+            //$(this).empty() 先将元素内容清空
+            //再调用funcArg判断参数是否为函数，将返回值append到元素内
             $(this).empty().append(funcArg(this, html, idx, originHtml))
           }) :
+          //读取, 判断当前元素是否为空
           (0 in this ? this[0].innerHTML : null)
       },
+      //设置或获取元素的textContent属性值
       text: function(text) {
         return 0 in arguments ?
           this.each(function(idx) {
             var newText = funcArg(this, text, idx, this.textContent)
+            //对newText做返回值判断
             this.textContent = newText == null ? '' : '' + newText
           }) :
+          //调用pluck方法以数组形式返回元素[textContent]，再join把数组转化为字符串
           (0 in this ? this.pluck('textContent').join("") : null)
       },
+      //设置或读取dom属性
+      /*attr(name)
+        attr(name, value)
+        attr(name, function(index, oldValue){ ... })
+        attr({ name: value, name2: value2, ... })
+      */
       attr: function(name, value) {
         var result
         return (typeof name == 'string' && !(1 in arguments)) ?
+         //name为string,并且value不存在   第一种形式读取dom属性
           (0 in this && this[0].nodeType == 1 && (result = this[0].getAttribute(name)) != null ? result : undefined) :
+          //name为string,并且value存在   后三种形式设置dom属性
           this.each(function(idx) {
             if (this.nodeType !== 1) return
+              //第四种形式，参数为对象(多个属性键值对)
             if (isObject(name))
+              //遍历对象，并依次调用setAttribute
               for (key in name) setAttribute(this, key, name[key])
+            //中间两种形式,调用funcArg,判断value是否为函数并返回值，再调用setAttribute
             else setAttribute(this, name, funcArg(this, value, idx, this.getAttribute(name)))
           })
       },
+      //删除指定的dom属性，该方法不用过多分析
       removeAttr: function(name) {
         return this.each(function() {
           this.nodeType === 1 && name.split(' ').forEach(function(attribute) {
@@ -952,40 +986,73 @@
           }, this)
         })
       },
+      //同样是设置或获取dom属性，优先读取propMap中的属性(元素的固有属性)
+      /*
+      propMap = {
+        'tabindex': 'tabIndex',
+        'readonly': 'readOnly',
+        'for': 'htmlFor',
+        'class': 'className',
+        'maxlength': 'maxLength',
+        'cellspacing': 'cellSpacing',
+        'cellpadding': 'cellPadding',
+        'rowspan': 'rowSpan',
+        'colspan': 'colSpan',
+        'usemap': 'useMap',
+        'frameborder': 'frameBorder',
+        'contenteditable': 'contentEditable'
+      },
+       */
       prop: function(name, value) {
         name = propMap[name] || name
         return (1 in arguments) ?
+          //设置属性
           this.each(function(idx) {
+            //直接将属性值赋值给dom元素相应的属性
             this[name] = funcArg(this, value, idx, this[name])
           }) :
+          //读取属性
           (this[0] && this[0][name])
       },
+      //删除指定属性
       removeProp: function(name) {
         name = propMap[name] || name
         return this.each(function() {
+          //delete 只会在自身的属性上有作用，并不会影响其原型链上的属性
           delete this[name]
         })
       },
+      //获取或读取dom的data-*属性
       data: function(name, value) {
+        //将name转化为data-aaa-bbb
         var attrName = 'data-' + name.replace(capitalRE, '-$1').toLowerCase()
 
         var data = (1 in arguments) ?
+          //设置data属性
           this.attr(attrName, value) :
+          //读取data属性
           this.attr(attrName)
-
+          //deserializeValue(data) 对data属性值进行数据类型判断，并返回处理后的值
         return data !== null ? deserializeValue(data) : undefined
       },
+      //设置或获取表单元素的value值
       val: function(value) {
         if (0 in arguments) {
+          //设置
           if (value == null) value = ""
           return this.each(function(idx) {
+            //依然是调用funcArg
             this.value = funcArg(this, value, idx, this.value)
           })
         } else {
+          //读取
+          //this[0].multiple   是否允许下拉列表可以多选
           return this[0] && (this[0].multiple ?
+            //true 可以多选的话，以数组形式返回所有选中的optiond的value值
             $(this[0]).find('option').filter(function() {
               return this.selected
             }).pluck('value') :
+            //false 则直接返回第一个元素的value值
             this[0].value)
         }
       },
