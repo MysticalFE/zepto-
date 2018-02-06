@@ -29,7 +29,7 @@
       fragmentRE = /^\s*<(\w+|!)[^>]*>/,
       singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
       tagExpanderRE = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig,
-      rootNodeRE = /^(?:body|html)$/i,
+      rootNodeRE = /^(?:body|html)$/i,//匹配body 和 html
       capitalRE = /([A-Z])/g, //匹配大写字母
       // special attributes that should be get/set via method calls
       methodAttributes = ['val', 'css', 'html', 'text', 'data', 'width', 'height', 'offset'],
@@ -1056,29 +1056,53 @@
             this[0].value)
         }
       },
+      //设置或获取自身相对于document的偏移量(left,right,top,bottom)(偏移量在数值上已经包括元素外边距)
       offset: function(coordinates) {
+        //设置
+        //coordinates 包含含有left top的属性对象时
         if (coordinates) return this.each(function(index) {
           var $this = $(this),
             coords = funcArg(this, coordinates, index, $this.offset()),
+            //获取当前元素父级定位元素
             parentOffset = $this.offsetParent().offset(),
+            //如果父级定位元素存在,则left 和 top值是相对于父级定位元素的(可以在纸上画下这几者的相对关系，清楚明了)
             props = {
               top: coords.top - parentOffset.top,
               left: coords.left - parentOffset.left
             }
-
+            //如果当前元素的position为默认值，将其设置为relative，相对自身正常位置的left 和 top
           if ($this.css('position') == 'static') props['position'] = 'relative'
+            //调用css添加样式
           $this.css(props)
         })
+        //读取(包括top left width height)
+          //如果对象集合为空
         if (!this.length) return null
+        //document.documentElement当前document文档的根元素，html
+        //如果this[0]不属于html元素对象，并且不在html内，返回{left:0,top:0}
         if (document.documentElement !== this[0] && !$.contains(document.documentElement, this[0]))
           return {
             top: 0,
             left: 0
           }
+        //如果上面条件为true,
+        /*
+          介绍下getBoundingClientRect方法
+          dom元素的原生方法, 相对当前浏览器视窗的位置(x,y)和元素的大小，返回一个Domrect对象包括
+          left: 元素左边距视窗左边的距离
+          top: 元素上边距视窗上边的距离
+          right: 元素右边距视窗左边的距离
+          top: 元素下边距视窗上边的距离
+          width: 元素宽度
+          height: 元素高度
+          x: 元素相对视窗左上角的x轴方向距离
+          y: 元素相对视窗左上角的y轴方向距离
+        */
         var obj = this[0].getBoundingClientRect()
+        //由于getBoundingClientRect获取的是相对于视窗的偏移，所以还要加上滚动距离
         return {
-          left: obj.left + window.pageXOffset,
-          top: obj.top + window.pageYOffset,
+          left: obj.left + window.pageXOffset, //window.pageXOffset => window.scrollX
+          top: obj.top + window.pageYOffset, //window.pageYOffset => window.scrollY
           width: Math.round(obj.width),
           height: Math.round(obj.height)
         }
@@ -1215,18 +1239,25 @@
           })
         })
       },
+      //设置或获取元素在y轴上的滚动距离
       scrollTop: function(value) {
         if (!this.length) return
+          //判断当前元素是否有scrollTop属性
         var hasScrollTop = 'scrollTop' in this[0]
+        //获取
+        //hasScrollTop为false的话，取pageYOffset也就是scrollY
         if (value === undefined) return hasScrollTop ? this[0].scrollTop : this[0].pageYOffset
+        //设置
         return this.each(hasScrollTop ?
           function() {
             this.scrollTop = value
           } :
           function() {
+            //dom原生方法scrollTo(scrollX, scrollY) 将元素滚动到相应的位置
             this.scrollTo(this.scrollX, value)
           })
       },
+      //设置或获取元素在x轴上的滚动距离,同理scrollTop方法
       scrollLeft: function(value) {
         if (!this.length) return
         var hasScrollLeft = 'scrollLeft' in this[0]
@@ -1239,35 +1270,43 @@
             this.scrollTo(value, this.scrollY)
           })
       },
+      //获取对象集合中的第一个元素相对于offsetParent的偏移量(top, left)
       position: function() {
         if (!this.length) return
 
         var elem = this[0],
-          // Get *real* offsetParent
           offsetParent = this.offsetParent(),
           // Get correct offsets
           offset = this.offset(),
+          //判断offsetParent是否为根元素，true的话就返回{top: 0, left: 0}
+          //否则返回元素当前相对于document的偏移量
           parentOffset = rootNodeRE.test(offsetParent[0].nodeName) ? {
             top: 0,
             left: 0
           } : offsetParent.offset()
 
-        // Subtract element margins
-        // note: when an element has margin: auto the offsetLeft and marginLeft
-        // are the same in Safari causing offset.left to incorrectly be 0
+        //当前元素如果有外边距的话，则其相对于dcoument的top left距离不应该将外边距算入
+        //也就是当前元素和其parentOffset的距离不包含元素的外边距
         offset.top -= parseFloat($(elem).css('margin-top')) || 0
         offset.left -= parseFloat($(elem).css('margin-left')) || 0
 
-        // Add offsetParent borders
+        //content box 所以parentOffset要加上border
         parentOffset.top += parseFloat($(offsetParent[0]).css('border-top-width')) || 0
         parentOffset.left += parseFloat($(offsetParent[0]).css('border-left-width')) || 0
 
-        // Subtract the two offsets
+        // 返回两者的top left偏移量
         return {
           top: offset.top - parentOffset.top,
           left: offset.left - parentOffset.left
         }
       },
+      //返回指向最近的包含该元素的定位元素(offsetParent属性)
+      //没有定位元素的话，则返回根元素
+      /*
+      有几种情况：1. 元素自身为fixed定位，offsetParent为null
+      2. 元素自身没有fixed定位，且父级元素也没有定位，offsetParent为body
+      3. 元素自身没有fixed定位，且父级元素有定位，offsetParent为其父级元素
+       */
       offsetParent: function() {
         return this.map(function() {
           var parent = this.offsetParent || document.body
@@ -1281,21 +1320,25 @@
     // for now
     $.fn.detach = $.fn.remove
 
-    // Generate the `width` and `height` functions
-    ;
+    // width/height 函数生成器
     ['width', 'height'].forEach(function(dimension) {
+      //将widty height的小写首字母替换为大写首字母
       var dimensionProperty =
         dimension.replace(/./, function(m) {
           return m[0].toUpperCase()
         })
-
+      //在$.fn上添加width 或 height方法
       $.fn[dimension] = function(value) {
         var offset, el = this[0]
+        //读取
+        //innerWidth scrollWidth width
         if (value === undefined) return isWindow(el) ? el['inner' + dimensionProperty] :
           isDocument(el) ? el.documentElement['scroll' + dimensionProperty] :
           (offset = this.offset()) && offset[dimension]
+          //设置
         else return this.each(function(idx) {
           el = $(this)
+          //调用css
           el.css(dimension, funcArg(this, value, idx, el[dimension]()))
         })
       }
