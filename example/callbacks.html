@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<script type="text/javascript" src="../js/zepto.js"></script>
+	<!-- <script type="text/javascript" src="../js/callbacks.js"></script> -->
+</head>
+<body>
+	<script type="text/javascript">
+		const foo = value => {
+			console.log(`foo${value}`)
+		}
+		const bar = value => {
+			console.log(`bar${value}`)
+		}
+
+		let callbacks = $.Callbacks()
+		callbacks.add(foo)
+		callbacks.fire(['hello','wo','123'])
+		callbacks.add(bar)
+		callbacks.fire('中')
+	</script>
+</body>
+</html>

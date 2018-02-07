@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<script type="text/javascript" src="../js/zepto.js"></script>
+</head>
+<body>
+	<div class="test"></div>
+	<div class="test"></div>
+	<div class="test"></div>
+	<div class="obj" style="position: relative; top: 100px; left: 100px;">
+		<div class="objChild1"></div>
+		<div class="objChild2">
+			<a href="" title=""></a>
+		</div>
+		<div class="objChild3"">sssss</div>
+	</div>
+	<ul>
+		<li></li>
+		<li>
+			<a href="" title=""></a>
+		</li>
+		<li></li>
+	</ul>
+	<script type="text/javascript">
+		$(function(){
+			function hide() {
+				$('.objChild3').hide()
+			}
+		})
+		const ele = $('.test')
+		const Employee = {
+		  age: 28,
+		  name: 'abc',
+		  designation: 'developer'
+		}
+		console.log(delete Employee.age)
+		console.log(delete Employee.aaa)
+		// console.log(ele.get())
+		// console.log(ele.get(-2))
+		// console.log(ele.concat($('.obj')))
+		// console.log($('.obj').is('.obj'))
+		// console.log($('.obj').find($('.objChild2')))
+		// console.log($('.obj').has($('.objChild1')))
+		// console.log($('.objChild2').has('a[href]'))
+		// console.log($('.objChild2').closest($('.obj')))
+		// console.log($('.objChild2').parent())
+		// console.log($('.obj').contents())
+		// console.log($('.objChild3').prev())
+		// $('.objChild2').wrapAll('<div class="wrapAll"><div class="wrapAllChild"></div></div>')
+		// $('.objChild2').wrap('<div class="wrapAll"><div class="wrapAllChild"></div></div>')
+		// $('.objChild2').wrapInner('<div class="wrapAll"><div class="wrapAllChild"></div></div>')
+		// $('.objChild2').unwrap('<div class="wrapAll"><div class="wrapAllChild"></div></div>')
+		// console.log($('.obj').html())
+		console.log($('.objChild3').offset({left: 80, top: 80}))
+		// console.log($('.objChild3')[0].getBoundingClientRect())
+		const obj1 = {
+			a: 1,
+			b: 2,
+			d: {
+				n: 12,
+				s: 20
+			}
+		}
+		const obj3 = {
+			a: 4,
+			b: 3,
+			c: 5,
+			d: {
+				n: 10,
+				m: 11
+			}
+		}
+		const obj4 = {
+			name: "John",
+			location: {
+				city: "Boston",
+				county:"USA"
+			}
+		}
+		const obj5 = {
+			last: "Resig",
+			location: {
+				state: "MA",
+				county:"China"
+			}
+		}
+		// const obj2 = $.extend(true, obj1, obj3)
+		const result=$.extend( false, obj4, obj5);
+		// console.log(result)
+	</script>
+</body>
+</html>
